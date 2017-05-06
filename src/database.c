@@ -3,152 +3,153 @@
 #include <sqlite3.h>
 #include <stdlib.h>
 
-sqlite3 *db;
-int db_connection(char *db_name)
-{
-	// Veri tabani baglantisi yap.
-	int connection_result = sqlite3_open(db_name, &db);
+sqlite3 *db = NULL;
+char* db_name = NULL;
 
-	// Baglantida hata var mi yok mu kontrol et.
-	if( connection_result != SQLITE_OK)
-	{
-		// loglama yapilacak.
-		fprintf(stdout,"Veri tabanına erişilemedi: %s", sqlite3_errmsg(db));
-		return -1;
-	}
-	// Baglantida hata varsa hata numarasini `db_connection_error` yap.
-	else
-	{
-		fprintf(stdout,"Veri tabanı başarıyla açıldı.");
-		return 0;
-	}
+int set_db_name(char* v_db_name)
+{
+    db_name = malloc(sizeof(v_db_name));
+    if (db_name == NULL)
+    {
+        fprintf(stdout, "set_db_name - malloc failed.");
+        return -1;
+    }
+    memcpy(db_name,v_db_name,sizeof(v_db_name));
+    return 0;
 }
 
-int sqlite3_insert_query(char* db_name, char* table_name, char *column_name, char *column_value)
+char *get_db_name()
 {
-
-	int result;
-	char *error_message = NULL;
-	char *sql_query = sqlite3_mprintf("INSERT INTO %q(%q) VALUES(%Q)",
-						table_name,
-						column_name,
-						column_value);
-
-	db_connection(db_name);
-	result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-	sqlite3_close(db);
-
-	for(;;)
-	{
-		switch(result)
-		{
-			case SQLITE_BUSY:
-				fprintf(stdout,"busy, wait 0.1 seconds");
-				usleep(100000);
-				// Again Query
-				db_connection(db_name);
-				result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-				sqlite3_close(db);
-				break;
-			case SQLITE_ERROR:
-			{
-				fprintf(stdout,"SQL ERROR #%d: %s", result, error_message);
-				sqlite3_free(error_message);
-				return -1;
-			}
-			case SQLITE_OK:
-			{
-				// free sql_query
-				sqlite3_free(sql_query);
-				return 0;
-			}
-		}
-	}
+    return db_name;
 }
 
-sqlite3_update_query(char *db_name, char* table_name, char* column_name, char* column_value)
+int db_connection()
 {
-        int result;
-        char *error_message = NULL;
-        char *sql_query = sqlite3_mprintf("UPDATE %q SET %q=%q",
-                                                table_name,
-                                                column_name,
-                                                column_value);
+    int connection_result = sqlite3_open(db_name, &db);
 
-        db_connection(db_name);
-        result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-        sqlite3_close(db);
-
-        for(;;)
-        {
-                switch(result)
-                {
-                        case SQLITE_BUSY:
-                                fprintf(stdout,"busy, wait 0.1 seconds");
-                                usleep(100000);
-                                // Again Query
-                                db_connection(db_name);
-                                result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-                                sqlite3_close(db);
-                                break;
-                        case SQLITE_ERROR:
-                        {
-                                fprintf(stdout,"SQL ERROR #%d: %s", result, error_message);
-                                sqlite3_free(error_message);
-                                return -1;
-                        }
-                        case SQLITE_OK:
-                        {
-                                sqlite3_free(sql_query);
-                                return 0;
-                        }
-                }
-        }
-
+    if( connection_result != SQLITE_OK)
+    {
+        fprintf(stdout,"Can't open database: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    else
+    {
+        fprintf(stdout,"Opened database successfully\n");
+        return 0;
+    }
 }
 
-int sqlite3_query_execute(char *db_name, char* sql_query)
+int sqlite3_query_execute(char* sql_query)
 {
-	int result;
-	char *error_message = NULL;
+    int result;
+    char *error_message = NULL;
 
-        db_connection(db_name);
-        result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-        sqlite3_close(db);
+    fprintf(stdout, "%s\n", sql_query);
 
-        for(;;)
-        {
-                switch(result)
-                {
-                        case SQLITE_BUSY:
-                                fprintf(stdout,"busy, wait 0.1 seconds");
-                                usleep(100000);
-                                // Again Query
-                                db_connection(db_name);
-                                result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-                                sqlite3_close(db);
-                                break;
-                        case SQLITE_ERROR:
-                        {
-                                fprintf(stdout,"SQL ERROR #%d: %s", result, error_message);
-                                sqlite3_free(error_message);
-                                return -1;
-                        }
-                        case SQLITE_OK:
-                        {
-                                sqlite3_free(sql_query);
-                                return 0;
-                        }
-                }
-        }
-	return 0;
+    db_connection(db_name);
+    result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
+    sqlite3_close(db);
+
+    for(;;)
+    {
+            switch(result)
+            {
+                    case SQLITE_BUSY:
+                        fprintf(stdout,"busy, wait 0.1 seconds");
+                        usleep(100000);
+                        // Again Query
+                        db_connection(db_name);
+                        result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
+                        sqlite3_close(db);
+                        break;
+
+                    case SQLITE_ERROR:
+                    {
+                        fprintf(stdout,"SQL ERROR #%d: %s", result, error_message);
+                        sqlite3_free(sql_query);
+                        sqlite3_free(error_message);
+                        return -1;
+                    }
+
+                    case SQLITE_OK:
+                    {
+                        sqlite3_free(sql_query);
+                        return 0;
+                    }
+
+                    case SQLITE_FULL: // 13   /* Insertion failed because database is full */
+                        break;
+            }
+    }
+    return 0;
+}
+
+
+int sqlite3_query_execute_delete_table(char* table_name, int id)
+{
+    int result;
+    char *error_message = NULL;
+
+    char *sql_query = sqlite3_mprintf("DELETE FROM %q WHERE id=%d", table_name, id);
+
+    fprintf(stdout, "%s\n", sql_query);
+
+    db_connection(db_name);
+    result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
+    sqlite3_close(db);
+
+    for(;;)
+    {
+            switch(result)
+            {
+                    case SQLITE_BUSY:
+                        fprintf(stdout,"busy, wait 0.1 seconds");
+                        usleep(100000);
+                        // Again Query
+                        db_connection(db_name);
+                        result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
+                        sqlite3_close(db);
+                        break;
+
+                    case SQLITE_ERROR:
+                    {
+                        fprintf(stdout,"SQL ERROR : %s", error_message);
+                        sqlite3_free(sql_query);
+                        sqlite3_free(error_message);
+                        return -1;
+                    }
+
+                    case SQLITE_OK:
+                    {
+                        sqlite3_free(sql_query);
+                        return 0;
+                    }
+
+                    case SQLITE_FULL: // 13   /* Insertion failed because database is full */
+                        break;        
+            }
+    }
+    return 0;
 }
 
 int main(int argc,char *argv[])
 {
-	char *test = "test.db";
-	char *sql_query = sqlite3_mprintf("UPDATE test SET id=1");
-	sqlite3_query_execute(test,sql_query);
+    set_db_name("test.db");
+    char *sql_query_test_update = sqlite3_mprintf("UPDATE test SET id=1");
 
-	return 0;
+     // UPDATE test SET id=1
+    if (sqlite3_query_execute(sql_query_test_update))
+    {
+        fprintf(stdout, "Can't execute query\n");
+        return -1;
+    }
+
+    // Test Delete table from id.
+    if (sqlite3_query_execute_delete_table("test", 1))
+    {
+        fprintf(stdout, "Can't execute delete table query\n");
+        return -1;
+    }
+
+    return 0;
 }
