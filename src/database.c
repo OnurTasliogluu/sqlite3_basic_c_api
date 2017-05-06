@@ -149,4 +149,5 @@ int sqlite3_query_execute_delete_table(char* table_name, int id)
         fprintf(stdout, "Can't execute query\n");
         return -1;
     }
+    return 0;
 }
