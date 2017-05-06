@@ -144,41 +144,9 @@ int sqlite3_query_execute_delete_table(char* table_name, int id)
     char *sql_query = sqlite3_mprintf("DELETE FROM %q WHERE id=%d", table_name, id);
 
     fprintf(stdout, "%s\n", sql_query);
-
-    db_connection(db_name);
-    result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-    sqlite3_close(db);
-
-    for(;;)
+    if (sqlite3_query_execute(sql_query_test_update))
     {
-            switch(result)
-            {
-                case SQLITE_BUSY:
-                    fprintf(stdout,"busy, wait 0.1 seconds\n");
-                    usleep(100000);
-                    // Again Query
-                    db_connection(db_name);
-                    result = sqlite3_exec(db, sql_query, 0, 0, &error_message);
-                    sqlite3_close(db);
-                    break;
-
-                case SQLITE_ERROR:
-                {
-                    fprintf(stdout,"SQL ERROR : %s\n", error_message);
-                    sqlite3_free(sql_query);
-                    sqlite3_free(error_message);
-                    return -1;
-                }
-
-                case SQLITE_OK:
-                {
-                    sqlite3_free(sql_query);
-                    return 0;
-                }
-
-                case SQLITE_FULL: // 13   /* Insertion failed because database is full */
-                    break;        
-            }
+        fprintf(stdout, "Can't execute query\n");
+        return -1;
     }
-    return 0;
 }
