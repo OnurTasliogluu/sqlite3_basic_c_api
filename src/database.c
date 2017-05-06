@@ -3,9 +3,24 @@
 #include <sqlite3.h>
 #include <stdlib.h>
 
+/**
+* @params Database ile olan bağlantıyı kurmak için global bir değişken tanımlanır.
+*/
 sqlite3 *db = NULL;
+
+/**
+* @params Database adını bir kere set ederek kullanmamıza yardımcı olan değişkendir.
+*/
 char* db_name = NULL;
 
+
+/**
+* @brief Veri tabanı adını set etmek için kullanılır
+*        Not: Bütün işlemler tamamlanıp programı sonlandırmak gerektiğinde free edilmesi için gerekli fonksiyon çağırılmalıdır.
+*
+* @return Hata numarasıdır.
+*
+*/
 int set_db_name(char* v_db_name)
 {
     db_name = malloc(sizeof(v_db_name));
@@ -18,11 +33,35 @@ int set_db_name(char* v_db_name)
     return 0;
 }
 
+/**
+* @brief Veri tabanı adını öğrenmek için kullanılır.
+*
+* @return Char pointer olarak dönüş yapar. 
+*
+*/
 char *get_db_name()
 {
     return db_name;
 }
 
+/**
+* @brief Global olarak tanımlanan ve heap bellekten yer alıp kullanılan yerleri free etmek için kullanılır.
+*
+* @return Hata numarasıdır.
+*
+*/
+int variable_free()
+{
+    free(db_name);
+    return 0;
+}
+
+/**
+* @brief Veri tabani baglantisi yapar. Baglantiyi sonlandirmaz.
+*
+* @return Hata numarasıdır.
+*
+*/
 int db_connection()
 {
     int connection_result = sqlite3_open(db_name, &db);
@@ -39,6 +78,13 @@ int db_connection()
     }
 }
 
+/**
+* @brief String olan verilen sorguları çalıştırır. Sadece INSERT,UPDATE ve DELETE sorguları için kullanılabilir.
+*       NOT: Select sorgusu için kullanılmaz.
+*
+* @return Hata numarasinidir.
+*
+*/
 int sqlite3_query_execute(char* sql_query)
 {
     int result;
@@ -84,7 +130,12 @@ int sqlite3_query_execute(char* sql_query)
     return 0;
 }
 
-
+/**
+* @brief SQL DELETE Query için özel olarak tanımlanmış bir fonksiyondur. Gerekli olan "Query String"i yazmaktan kurtarır.
+*
+* @return Hata numarasıdır.
+*
+*/
 int sqlite3_query_execute_delete_table(char* table_name, int id)
 {
     int result;
@@ -129,38 +180,5 @@ int sqlite3_query_execute_delete_table(char* table_name, int id)
                     break;        
             }
     }
-    return 0;
-}
-
-int main(int argc,char *argv[])
-{
-    set_db_name("test.db");
-
-    char *sql_query_test_create_table = sqlite3_mprintf("CREATE TABLE test(" \
-        "ID INT," \
-        "NAME TEXT)");
-
-    char *sql_query_test_update = sqlite3_mprintf("UPDATE test SET id=1");
-
-    if (sqlite3_query_execute(sql_query_test_create_table))
-    {
-        fprintf(stdout, "Can't execute query\n");
-        return -1;
-    }
-
-     // UPDATE test SET id=1
-    if (sqlite3_query_execute(sql_query_test_update))
-    {
-        fprintf(stdout, "Can't execute query\n");
-        return -1;
-    }
-
-    // Test Delete table from id.
-    if (sqlite3_query_execute_delete_table("test", 1))
-    {
-        fprintf(stdout, "Can't execute delete table query\n");
-        return -1;
-    }
-
     return 0;
 }
